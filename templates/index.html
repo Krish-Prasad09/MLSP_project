@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EmoSense — Interview Coach</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0a0a0f;
+      --surface:  #111118;
+      --card:     #16161f;
+      --border:   rgba(255,255,255,0.07);
+      --text:     #e8e8f0;
+      --muted:    #6b6b80;
+      --accent:   #7c6af7;
+      --accent2:  #a78bfa;
+      --green:    #22d3a5;
+      --red:      #f87171;
+      --yellow:   #fbbf24;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(124,106,247,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(124,106,247,0.03) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none; z-index: 0;
+    }
+
+    body::after {
+      content: '';
+      position: fixed; top: -200px; left: 50%;
+      transform: translateX(-50%);
+      width: 800px; height: 500px;
+      background: radial-gradient(ellipse, rgba(124,106,247,0.12) 0%, transparent 70%);
+      pointer-events: none; z-index: 0;
+    }
+
+    .page { position: relative; z-index: 1; max-width: 960px; margin: 0 auto; padding: 48px 24px 80px; }
+
+    header { text-align: center; margin-bottom: 56px; }
+
+    .logo-tag {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(124,106,247,0.12);
+      border: 1px solid rgba(124,106,247,0.25);
+      border-radius: 100px; padding: 6px 16px;
+      font-size: 12px; font-weight: 500; letter-spacing: 0.08em;
+      color: var(--accent2); text-transform: uppercase; margin-bottom: 24px;
+    }
+    .logo-tag span { width: 6px; height: 6px; border-radius: 50%; background: var(--accent2); animation: pulse 2s infinite; }
+
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(2.2rem, 5vw, 3.2rem); font-weight: 800;
+      line-height: 1.1; letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #ffffff 30%, var(--accent2) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      margin-bottom: 16px;
+    }
+
+    .subtitle { font-size: 1rem; color: var(--muted); font-weight: 300; line-height: 1.6; max-width: 560px; margin: 0 auto; }
+
+    /* ── Pill chips showing what will be analysed ── */
+    .analysis-chips {
+      display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;
+      margin-bottom: 32px;
+    }
+    .analysis-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 100px; padding: 6px 14px;
+      font-size: 0.78rem; color: var(--muted);
+    }
+    .analysis-chip .dot { width: 6px; height: 6px; border-radius: 50%; }
+
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 32px; margin-bottom: 24px; }
+
+    .card-title {
+      font-family: 'Syne', sans-serif; font-size: 0.75rem; font-weight: 600;
+      letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 20px;
+    }
+
+    /* Section divider inside results */
+    .section-divider {
+      display: flex; align-items: center; gap: 12px; margin: 32px 0 24px;
+    }
+    .section-divider-line { flex: 1; height: 1px; background: var(--border); }
+    .section-divider-label {
+      font-family: 'Syne', sans-serif; font-size: 0.7rem; font-weight: 600;
+      letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .tabs { display: flex; gap: 4px; background: var(--surface); border-radius: 12px; padding: 4px; margin-bottom: 28px; }
+    .tab {
+      flex: 1; padding: 10px; border: none;
+      background: transparent; color: var(--muted);
+      font-family: 'DM Sans', sans-serif; font-size: 0.875rem; font-weight: 500;
+      border-radius: 9px; cursor: pointer; transition: all 0.2s;
+    }
+    .tab.active { background: var(--card); color: var(--text); box-shadow: 0 1px 6px rgba(0,0,0,0.4); }
+
+    .upload-zone {
+      border: 2px dashed var(--border); border-radius: 14px;
+      padding: 40px 24px; text-align: center; cursor: pointer;
+      transition: all 0.25s; position: relative;
+    }
+    .upload-zone:hover, .upload-zone.dragover { border-color: var(--accent); background: rgba(124,106,247,0.05); }
+    .upload-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+    .upload-icon { font-size: 2rem; margin-bottom: 12px; }
+    .upload-zone p { color: var(--muted); font-size: 0.875rem; line-height: 1.8; }
+    .upload-zone p strong { color: var(--text); }
+    #file-name { margin-top: 10px; font-size: 0.8rem; color: var(--accent2); }
+
+    .recorder-area { text-align: center; padding: 20px 0; }
+    #rec-btn {
+      width: 80px; height: 80px; border-radius: 50%;
+      background: rgba(124,106,247,0.15); border: 2px solid var(--accent);
+      font-size: 1.8rem; cursor: pointer; transition: all 0.2s; margin-bottom: 16px;
+    }
+    #rec-btn:hover { background: rgba(124,106,247,0.3); transform: scale(1.05); }
+    #rec-btn.recording { background: rgba(248,113,113,0.2); border-color: var(--red); animation: rec-pulse 1.5s infinite; }
+    @keyframes rec-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(248,113,113,0.4)} 50%{box-shadow:0 0 0 16px rgba(248,113,113,0)} }
+    #rec-status { color: var(--muted); font-size: 0.9rem; margin-bottom: 8px; }
+    #rec-timer { font-family: 'Syne', sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--text); height: 40px; margin-bottom: 12px; }
+    #playback { width: 100%; margin-top: 8px; display: none; }
+
+    .error-box {
+      display: none; background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.3);
+      border-radius: 10px; padding: 12px 16px; color: var(--red); font-size: 0.875rem;
+      margin-top: 16px;
+    }
+
+    .btn-analyse {
+      width: 100%; padding: 16px; margin-top: 20px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border: none; border-radius: 12px; color: #fff;
+      font-family: 'DM Sans', sans-serif; font-size: 1rem; font-weight: 600;
+      cursor: pointer; transition: all 0.2s; letter-spacing: 0.02em;
+    }
+    .btn-analyse:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(124,106,247,0.35); }
+    .btn-analyse:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+
+    /* Loader */
+    #loader { display: none; text-align: center; padding: 48px; }
+    .spinner {
+      width: 44px; height: 44px; border: 3px solid var(--border);
+      border-top-color: var(--accent); border-radius: 50%;
+      animation: spin 0.8s linear infinite; margin: 0 auto 20px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #loader-msg { color: var(--muted); font-size: 0.9rem; }
+    #loader-sub { color: var(--muted); font-size: 0.78rem; margin-top: 6px; opacity: 0.7; }
+
+    /* ── COMBINED RESULTS ── */
+    #results { display: none; }
+
+    /* Emotion hero */
+    .result-hero { display: flex; align-items: center; gap: 20px; margin-bottom: 28px; }
+    .emotion-badge {
+      width: 72px; height: 72px; border-radius: 18px; display: flex;
+      align-items: center; justify-content: center; font-size: 2rem;
+      background: rgba(124,106,247,0.15); flex-shrink: 0;
+    }
+    .hero-text h2 { font-family: 'Syne', sans-serif; font-size: 1.5rem; font-weight: 700; text-transform: capitalize; }
+    .tone-tag {
+      display: inline-block; padding: 3px 10px; border-radius: 100px;
+      font-size: 0.78rem; font-weight: 500; margin-top: 4px; margin-bottom: 4px;
+    }
+    .confidence { font-size: 0.82rem; color: var(--muted); }
+
+    .score-section { margin-bottom: 20px; }
+    .score-label { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 0.875rem; }
+    .score-label strong { font-family: 'Syne', sans-serif; font-size: 1.1rem; }
+    .score-track { height: 8px; background: var(--surface); border-radius: 100px; overflow: hidden; }
+    .score-fill { height: 100%; border-radius: 100px; width: 0; transition: width 0.8s cubic-bezier(0.34,1.56,0.64,1); }
+
+    .tip-box {
+      display: flex; gap: 12px; background: var(--surface);
+      border-left: 3px solid var(--accent); border-radius: 10px;
+      padding: 14px 16px; margin: 20px 0;
+    }
+    .tip-icon { font-size: 1.1rem; flex-shrink: 0; }
+
+    .prob-grid { display: flex; flex-direction: column; gap: 10px; }
+    .prob-row { display: grid; grid-template-columns: 90px 1fr 48px; align-items: center; gap: 10px; }
+    .prob-label { font-size: 0.8rem; color: var(--muted); text-transform: capitalize; }
+    .prob-track { height: 6px; background: var(--surface); border-radius: 100px; overflow: hidden; }
+    .prob-fill { height: 100%; border-radius: 100px; width: 0; transition: width 0.6s ease; }
+    .prob-val { font-size: 0.78rem; color: var(--muted); text-align: right; }
+
+    /* Timeline */
+    .timeline-wrap { overflow-x: auto; padding-bottom: 8px; }
+    #timeline-canvas { display: block; }
+    .timeline-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; color: var(--muted); }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+    /* Speech scores */
+    .score-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 14px; margin-bottom: 24px;
+    }
+    .score-tile {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 16px; text-align: center;
+      transition: border-color 0.2s;
+    }
+    .score-tile:hover { border-color: rgba(124,106,247,0.3); }
+    .score-tile .tile-value {
+      font-family: 'Syne', sans-serif; font-size: 2rem; font-weight: 800;
+      line-height: 1; margin-bottom: 4px;
+    }
+    .score-tile .tile-label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+    .score-tile .tile-bar { height: 3px; border-radius: 100px; margin-top: 10px; background: var(--border); overflow: hidden; }
+    .score-tile .tile-bar-fill { height: 100%; border-radius: 100px; width: 0; transition: width 0.9s ease; }
+
+    .overall-score-ring {
+      display: flex; align-items: center; gap: 24px; margin-bottom: 24px;
+    }
+    .ring-wrap { position: relative; width: 100px; height: 100px; flex-shrink: 0; }
+    .ring-wrap svg { transform: rotate(-90deg); }
+    .ring-number {
+      position: absolute; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      font-family: 'Syne', sans-serif; font-size: 1.5rem; font-weight: 800;
+    }
+    .ring-number small { font-size: 0.55rem; color: var(--muted); font-weight: 400; }
+    .ring-info h3 { font-family: 'Syne', sans-serif; font-size: 1.1rem; font-weight: 700; margin-bottom: 6px; }
+    .ring-info p { font-size: 0.85rem; color: var(--muted); line-height: 1.5; }
+
+    /* Stats row */
+    .stat-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+    .stat-chip {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 100px; padding: 5px 14px;
+      font-size: 0.78rem; color: var(--muted);
+    }
+    .stat-chip strong { color: var(--text); }
+
+    /* Tips list */
+    .tips-list { display: flex; flex-direction: column; gap: 10px; }
+    .tip-item {
+      display: flex; gap: 12px; align-items: flex-start;
+      background: var(--surface); border-radius: 10px; padding: 12px 14px;
+      border-left: 3px solid var(--accent);
+    }
+    .tip-item .tip-num {
+      width: 22px; height: 22px; border-radius: 50%; background: rgba(124,106,247,0.2);
+      color: var(--accent2); font-size: 0.7rem; font-weight: 700;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .tip-item p { font-size: 0.875rem; line-height: 1.5; }
+
+    /* Grammar issues */
+    .grammar-list { display: flex; flex-direction: column; gap: 8px; }
+    .grammar-item {
+      background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.2);
+      border-radius: 10px; padding: 10px 14px;
+      font-size: 0.82rem; color: #fca5a5; line-height: 1.5;
+    }
+    .grammar-good {
+      background: rgba(34,211,165,0.08); border: 1px solid rgba(34,211,165,0.2);
+      border-radius: 10px; padding: 10px 14px;
+      font-size: 0.82rem; color: var(--green);
+    }
+
+    /* Filler badge list */
+    .filler-badges { display: flex; flex-wrap: wrap; gap: 8px; }
+    .filler-badge {
+      background: rgba(251,191,36,0.12); border: 1px solid rgba(251,191,36,0.25);
+      border-radius: 100px; padding: 4px 12px;
+      font-size: 0.78rem; color: var(--yellow);
+    }
+    .filler-badge .filler-count {
+      margin-left: 5px; background: rgba(251,191,36,0.25);
+      border-radius: 100px; padding: 1px 6px; font-weight: 700;
+    }
+    .no-fillers { font-size: 0.875rem; color: var(--green); }
+
+    /* Transcript */
+    .transcript-box {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 20px; line-height: 1.9;
+      font-size: 0.9rem; color: var(--text); max-height: 320px; overflow-y: auto;
+    }
+    mark.filler {
+      background: rgba(251,191,36,0.22); color: var(--yellow);
+      border-radius: 4px; padding: 1px 3px;
+    }
+
+    /* Pace meter */
+    .pace-meter { margin-top: 8px; }
+    .pace-track {
+      position: relative; height: 10px; border-radius: 100px;
+      background: linear-gradient(90deg, #6366f1 0%, #22d3a5 35%, #22d3a5 55%, #f87171 100%);
+      margin: 10px 0 6px;
+    }
+    .pace-thumb {
+      position: absolute; top: 50%; width: 14px; height: 14px;
+      border-radius: 50%; background: #fff; border: 2px solid var(--accent);
+      transform: translate(-50%, -50%); transition: left 0.8s ease;
+    }
+    .pace-labels { display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--muted); }
+    .pace-note {
+      display: flex; align-items: flex-start; gap: 6px;
+      margin-top: 10px; font-size: 0.75rem; color: var(--muted);
+      background: var(--surface); border-radius: 8px; padding: 8px 12px;
+    }
+    .pace-note span { flex: 1; line-height: 1.5; }
+
+    #try-again {
+      display: block; margin: 0 auto; padding: 12px 28px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; color: var(--muted);
+      font-family: 'DM Sans', sans-serif; font-size: 0.875rem; cursor: pointer;
+      transition: all 0.2s;
+    }
+    #try-again:hover { border-color: var(--accent); color: var(--text); }
+
+    footer {
+      text-align: center; margin-top: 40px; font-size: 0.78rem; color: var(--muted);
+    }
+    footer span { color: var(--accent2); }
+
+    /* Colour helpers */
+    .c-green { color: var(--green); }
+    .c-yellow { color: var(--yellow); }
+    .c-red { color: var(--red); }
+    .c-accent { color: var(--accent2); }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div class="logo-tag"><span></span> AI Interview Coach</div>
+    <h1>EmoSense</h1>
+    <p class="subtitle">Upload one audio clip — get a complete interview report covering <em>emotion</em>, <em>communication</em>, filler words, pace and more.</p>
+  </header>
+
+  <!-- What gets analysed — informational chips -->
+  <div class="analysis-chips">
+    <div class="analysis-chip"><div class="dot" style="background:#a855f7"></div>Emotion (Wav2Vec2)</div>
+    <div class="analysis-chip"><div class="dot" style="background:#22d3a5"></div>Speech Transcript (Whisper)</div>
+    <div class="analysis-chip"><div class="dot" style="background:#fbbf24"></div>Filler Words</div>
+    <div class="analysis-chip"><div class="dot" style="background:#3b82f6"></div>Grammar &amp; Formality</div>
+    <div class="analysis-chip"><div class="dot" style="background:#f87171"></div>Active Speaking Pace</div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       INPUT CARD
+  ═══════════════════════════════════════════════════════════════ -->
+  <div class="card" id="input-card">
+    <p class="card-title">Your interview answer</p>
+
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('upload')">📂 Upload Audio</button>
+      <button class="tab"        onclick="switchTab('record')">🎙️ Record Live</button>
+    </div>
+
+    <div id="tab-upload">
+      <div class="upload-zone" id="drop-zone">
+        <input type="file" id="audio-file" accept=".wav,.mp3,.ogg,.webm,.m4a,.flac"/>
+        <div class="upload-icon">🎵</div>
+        <p><strong>Click to upload</strong> or drag &amp; drop</p>
+        <p>WAV · MP3 · OGG · WebM · FLAC &nbsp;|&nbsp; any length</p>
+        <div id="file-name"></div>
+      </div>
+    </div>
+
+    <div id="tab-record" style="display:none">
+      <div class="recorder-area">
+        <button id="rec-btn" onclick="toggleRecord()">🎙️</button>
+        <p id="rec-status">Click to start recording</p>
+        <div id="rec-timer"></div>
+        <audio id="playback" controls></audio>
+      </div>
+    </div>
+
+    <div class="error-box" id="error-box"></div>
+
+    <button class="btn-analyse" id="analyse-btn" onclick="runAnalyse()" disabled>
+      🔍 Analyse Interview Answer →
+    </button>
+  </div>
+
+  <!-- Loader -->
+  <div id="loader" class="card">
+    <div class="spinner"></div>
+    <p id="loader-msg">Running emotion &amp; speech analysis…</p>
+    <p id="loader-sub">Whisper transcription may take 30–60 s on first run</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       COMBINED RESULTS
+  ═══════════════════════════════════════════════════════════════ -->
+  <div id="results">
+
+    <!-- ── SECTION 1: Emotion ─────────────────────────────────────────── -->
+    <div class="section-divider">
+      <div class="section-divider-line"></div>
+      <div class="section-divider-label">🎭 Emotional Tone Analysis</div>
+      <div class="section-divider-line"></div>
+    </div>
+
+    <div class="card">
+      <p class="card-title">Dominant Emotion &amp; Interview Score</p>
+      <div class="result-hero">
+        <div class="emotion-badge" id="res-badge">😐</div>
+        <div class="hero-text">
+          <h2 id="res-emotion">neutral</h2>
+          <div class="tone-tag" id="res-tone">Composed</div><br/>
+          <span class="confidence" id="res-conf">Confidence: 0%</span>
+          <span class="confidence" id="res-duration" style="margin-left:12px"></span>
+        </div>
+      </div>
+
+      <div class="score-section">
+        <div class="score-label">
+          <span>Emotion Interview Score</span>
+          <strong id="res-score">0 / 100</strong>
+        </div>
+        <div class="score-track">
+          <div class="score-fill" id="res-score-fill"></div>
+        </div>
+      </div>
+
+      <div class="tip-box">
+        <div class="tip-icon">💡</div>
+        <p id="res-tip">—</p>
+      </div>
+
+      <div class="card" style="margin-bottom:0; background: var(--surface);">
+        <p class="card-title">Average emotion breakdown</p>
+        <div class="prob-grid" id="prob-grid"></div>
+      </div>
+    </div>
+
+    <div class="card" id="timeline-card" style="display:none">
+      <p class="card-title">🕒 Emotion Timeline (every 10 s)</p>
+      <div class="timeline-wrap">
+        <canvas id="timeline-canvas"></canvas>
+      </div>
+      <div class="timeline-legend" id="timeline-legend"></div>
+    </div>
+
+    <!-- ── SECTION 2: Communication ──────────────────────────────────── -->
+    <div class="section-divider">
+      <div class="section-divider-line"></div>
+      <div class="section-divider-label">💬 Communication Quality Analysis</div>
+      <div class="section-divider-line"></div>
+    </div>
+
+    <!-- Overall ring -->
+    <div class="card" id="speech-no-data" style="display:none">
+      <p style="color:var(--muted);font-size:0.875rem">⚠️ Speech analysis unavailable — <span id="speech-error-msg"></span></p>
+    </div>
+
+    <div id="speech-sections">
+      <div class="card">
+        <p class="card-title">Communication Quality Report</p>
+
+        <div class="overall-score-ring">
+          <div class="ring-wrap">
+            <svg width="100" height="100" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="10"/>
+              <circle cx="50" cy="50" r="40" fill="none" stroke="var(--accent)" stroke-width="10"
+                      stroke-linecap="round" stroke-dasharray="251.2" stroke-dashoffset="251.2"
+                      id="ring-circle" style="transition:stroke-dashoffset 1s ease"/>
+            </svg>
+            <div class="ring-number">
+              <span id="ring-val">0</span>
+              <small>/100</small>
+            </div>
+          </div>
+          <div class="ring-info">
+            <h3 id="ring-label">—</h3>
+            <p id="ring-desc">—</p>
+          </div>
+        </div>
+
+        <div class="stat-chips" id="stat-chips"></div>
+        <div class="score-grid" id="score-grid"></div>
+      </div>
+
+      <!-- Tips -->
+      <div class="card">
+        <p class="card-title">💡 Coaching Tips</p>
+        <div class="tips-list" id="tips-list"></div>
+      </div>
+
+      <!-- Filler words -->
+      <div class="card">
+        <p class="card-title">⚠️ Filler Words</p>
+        <div id="filler-section"></div>
+      </div>
+
+      <!-- Grammar -->
+      <div class="card">
+        <p class="card-title">✏️ Grammar &amp; Formality</p>
+        <div id="grammar-section"></div>
+      </div>
+
+      <!-- Pace -->
+      <div class="card">
+        <p class="card-title">⏱ Active Speaking Pace</p>
+        <div class="pace-meter" id="pace-section"></div>
+      </div>
+
+      <!-- Transcript -->
+      <div class="card">
+        <p class="card-title">📝 Transcript</p>
+        <p style="font-size:0.78rem;color:var(--muted);margin-bottom:12px">
+          <mark class="filler" style="font-size:0.78rem">Yellow highlights</mark> = filler words detected
+        </p>
+        <div class="transcript-box" id="transcript-box"></div>
+      </div>
+    </div>
+
+    <button id="try-again" onclick="resetAll()">↩ Analyse another answer</button>
+  </div>
+
+  <footer>Built with <span>Wav2Vec2</span> · Whisper STT · Trained on CREMA-D · 6 emotion classes</footer>
+</div>
+
+<script>
+  // ── constants ─────────────────────────────────────────────────────────────
+  const EMOJIS = { angry:'😠', disgust:'🤢', fear:'😰', happy:'😄', neutral:'😐', sad:'😔' };
+  const COLORS = { angry:'#ef4444', disgust:'#f97316', fear:'#a855f7', happy:'#22d3a5', neutral:'#3b82f6', sad:'#6366f1' };
+  const EMOTIONS = ['angry','disgust','fear','happy','neutral','sad'];
+
+  // ── state ─────────────────────────────────────────────────────────────────
+  let activeTab   = 'upload';
+  let audioBlob   = null;
+  let mediaRec    = null;
+  let recChunks   = [];
+  let recInterval = null;
+  let recSeconds  = 0;
+  let isRecording = false;
+
+  // ── tab switch ────────────────────────────────────────────────────────────
+  function switchTab(tab) {
+    activeTab = tab;
+    audioBlob = null;
+    document.getElementById('analyse-btn').disabled = true;
+    document.querySelectorAll('.tab').forEach((t, i) =>
+      t.classList.toggle('active', (i === 0) === (tab === 'upload')));
+    document.getElementById('tab-upload').style.display = tab === 'upload' ? '' : 'none';
+    document.getElementById('tab-record').style.display = tab === 'record' ? '' : 'none';
+  }
+
+  // ── file upload ───────────────────────────────────────────────────────────
+  const fileInput = document.getElementById('audio-file');
+  const dropZone  = document.getElementById('drop-zone');
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) {
+      audioBlob = fileInput.files[0];
+      document.getElementById('file-name').textContent = '✓ ' + fileInput.files[0].name;
+      document.getElementById('analyse-btn').disabled = false;
+    }
+  });
+
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault(); dropZone.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      audioBlob = file;
+      document.getElementById('file-name').textContent = '✓ ' + file.name;
+      document.getElementById('analyse-btn').disabled = false;
+    }
+  });
+
+  // ── recorder ──────────────────────────────────────────────────────────────
+  async function toggleRecord() {
+    if (!isRecording) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRec = new MediaRecorder(stream);
+        recChunks = []; recSeconds = 0;
+        mediaRec.ondataavailable = e => recChunks.push(e.data);
+        mediaRec.onstop = () => {
+          audioBlob = new Blob(recChunks, { type: 'audio/webm' });
+          const url = URL.createObjectURL(audioBlob);
+          const pl = document.getElementById('playback');
+          pl.src = url; pl.style.display = 'block';
+          document.getElementById('analyse-btn').disabled = false;
+          stream.getTracks().forEach(t => t.stop());
+        };
+        mediaRec.start();
+        isRecording = true;
+        document.getElementById('rec-btn').classList.add('recording');
+        document.getElementById('rec-btn').textContent = '⏹️';
+        document.getElementById('rec-status').textContent = 'Recording… click to stop';
+        recInterval = setInterval(() => {
+          recSeconds++;
+          const m = String(Math.floor(recSeconds/60)).padStart(2,'0');
+          const s = String(recSeconds%60).padStart(2,'0');
+          document.getElementById('rec-timer').textContent = m + ':' + s;
+        }, 1000);
+      } catch(e) {
+        showError('Microphone access denied. Please allow mic permission in browser.');
+      }
+    } else {
+      mediaRec.stop();
+      clearInterval(recInterval);
+      isRecording = false;
+      document.getElementById('rec-btn').classList.remove('recording');
+      document.getElementById('rec-btn').textContent = '🎙️';
+      document.getElementById('rec-status').textContent = 'Recording saved ✓';
+    }
+  }
+
+  // ── main analyse ──────────────────────────────────────────────────────────
+  async function runAnalyse() {
+    if (!audioBlob) return;
+    hideError();
+    document.getElementById('input-card').style.display = 'none';
+    document.getElementById('loader').style.display     = 'block';
+    document.getElementById('results').style.display    = 'none';
+
+    const form = new FormData();
+    form.append('audio', audioBlob, 'audio.webm');
+
+    try {
+      const res  = await fetch('/analyse_full', { method: 'POST', body: form });
+      const data = await res.json();
+      if (data.error) { showInputWithError(data.error); return; }
+      renderResults(data);
+    } catch(e) {
+      showInputWithError('Server error: ' + e.message);
+    }
+  }
+
+  // ── render combined results ───────────────────────────────────────────────
+  function renderResults(data) {
+    document.getElementById('loader').style.display = 'none';
+
+    renderEmotionSection(data.emotion);
+    renderSpeechSection(data.speech);
+
+    document.getElementById('results').style.display = 'block';
+  }
+
+  // ── render emotion section ────────────────────────────────────────────────
+  function renderEmotionSection(d) {
+    const em  = d.emotion;
+    const col = COLORS[em] || '#7c6af7';
+
+    document.getElementById('res-badge').textContent      = EMOJIS[em] || '🎙️';
+    document.getElementById('res-badge').style.background = col + '22';
+    document.getElementById('res-emotion').textContent    = em;
+    document.getElementById('res-emotion').style.color    = col;
+
+    const toneEl = document.getElementById('res-tone');
+    toneEl.textContent       = d.tone;
+    toneEl.style.background  = col + '22';
+    toneEl.style.color       = col;
+
+    document.getElementById('res-conf').textContent = 'Confidence: ' + d.confidence + '%';
+
+    if (d.duration) {
+      const m = Math.floor(d.duration / 60);
+      const s = Math.round(d.duration % 60);
+      document.getElementById('res-duration').textContent =
+        '⏱ ' + (m > 0 ? m + 'm ' : '') + s + 's';
+    }
+
+    document.getElementById('res-score').textContent = d.score + ' / 100';
+    setTimeout(() => {
+      const fill = document.getElementById('res-score-fill');
+      fill.style.width      = d.score + '%';
+      fill.style.background = 'linear-gradient(90deg,' + col + '99,' + col + ')';
+    }, 100);
+
+    document.getElementById('res-tip').textContent = d.tip;
+    document.querySelector('.tip-box').style.borderLeftColor = col;
+
+    const grid = document.getElementById('prob-grid');
+    grid.innerHTML = '';
+    const sorted = Object.entries(d.all_probs).sort((a,b) => b[1]-a[1]);
+    sorted.forEach(([label, pct], idx) => {
+      const c = COLORS[label] || '#7c6af7';
+      const row = document.createElement('div');
+      row.className = 'prob-row';
+      row.innerHTML = `
+        <span class="prob-label">${label}</span>
+        <div class="prob-track"><div class="prob-fill" id="pf-${idx}" style="background:${c}"></div></div>
+        <span class="prob-val">${pct}%</span>`;
+      grid.appendChild(row);
+      setTimeout(() => { document.getElementById('pf-'+idx).style.width = pct + '%'; }, 150 + idx * 80);
+    });
+
+    if (d.timeline && d.timeline.length > 1) {
+      drawTimeline(d.timeline);
+      document.getElementById('timeline-card').style.display = 'block';
+    } else {
+      document.getElementById('timeline-card').style.display = 'none';
+    }
+  }
+
+  // ── render speech section ─────────────────────────────────────────────────
+  function renderSpeechSection(d) {
+    const c = d.communication;
+
+    if (!c || c.error) {
+      document.getElementById('speech-sections').style.display  = 'none';
+      document.getElementById('speech-no-data').style.display   = 'block';
+      document.getElementById('speech-error-msg').textContent   = (c && c.error) || 'no transcript returned';
+      return;
+    }
+
+    document.getElementById('speech-sections').style.display = 'block';
+    document.getElementById('speech-no-data').style.display  = 'none';
+
+    // ── Overall ring ──────────────────────────────────────────────────────
+    const score = c.overall_score;
+    const circumference = 251.2;
+    const offset = circumference - (score / 100) * circumference;
+    const ringColor = score >= 75 ? '#22d3a5' : score >= 50 ? '#fbbf24' : '#f87171';
+    setTimeout(() => {
+      const circle = document.getElementById('ring-circle');
+      circle.style.strokeDashoffset = offset;
+      circle.style.stroke = ringColor;
+    }, 100);
+    document.getElementById('ring-val').textContent   = score;
+    document.getElementById('ring-val').style.color   = ringColor;
+
+    let label, desc;
+    if (score >= 85)      { label = 'Excellent';   desc = 'Your communication is polished and professional. Ready for interviews!'; }
+    else if (score >= 70) { label = 'Good';         desc = 'Solid communication with room for minor improvements.'; }
+    else if (score >= 55) { label = 'Fair';         desc = 'Some areas need attention — focus on the tips below.'; }
+    else                  { label = 'Needs Work';   desc = 'Significant improvement needed. Practice with the coaching tips.'; }
+    document.getElementById('ring-label').textContent = label;
+    document.getElementById('ring-label').style.color = ringColor;
+    document.getElementById('ring-desc').textContent  = desc;
+
+    // ── Stat chips ────────────────────────────────────────────────────────
+    const chips = document.getElementById('stat-chips');
+    chips.innerHTML = '';
+    const fmtTime = s => s >= 60 ? Math.floor(s/60) + 'm ' + Math.round(s%60) + 's' : s + 's';
+    const stats = [
+      { label: 'Words spoken',        val: c.word_count },
+      { label: 'Sentences',           val: c.sentence_count },
+      { label: 'Avg words/sentence',  val: c.avg_words_per_sent },
+      { label: 'Filler words',        val: c.filler_count },
+      { label: 'Pace',                val: c.wpm + ' wpm' },
+      { label: 'Active speaking',     val: fmtTime(d.speaking_seconds || d.duration_seconds) },
+      { label: 'Total duration',      val: fmtTime(d.duration_seconds) },
+    ];
+    stats.forEach(s => {
+      const chip = document.createElement('div');
+      chip.className = 'stat-chip';
+      chip.innerHTML = `<strong>${s.val}</strong> ${s.label}`;
+      chips.appendChild(chip);
+    });
+
+    // ── Score tiles ───────────────────────────────────────────────────────
+    const tileData = [
+      { key: 'filler_score',  label: 'Filler Words',  icon: '🗣️' },
+      { key: 'grammar_score', label: 'Grammar',        icon: '✏️' },
+      { key: 'clarity_score', label: 'Clarity',        icon: '💡' },
+      { key: 'vocab_score',   label: 'Vocabulary',     icon: '📚' },
+      { key: 'pace_score',    label: 'Pace',           icon: '⏱' },
+    ];
+    const grid = document.getElementById('score-grid');
+    grid.innerHTML = '';
+    tileData.forEach((t, idx) => {
+      const v   = c[t.key];
+      const col = v >= 75 ? '#22d3a5' : v >= 50 ? '#fbbf24' : '#f87171';
+      const tile = document.createElement('div');
+      tile.className = 'score-tile';
+      tile.innerHTML = `
+        <div class="tile-value" style="color:${col}">${v}</div>
+        <div class="tile-label">${t.icon} ${t.label}</div>
+        <div class="tile-bar"><div class="tile-bar-fill" id="tb-${idx}" style="background:${col}"></div></div>`;
+      grid.appendChild(tile);
+      setTimeout(() => {
+        document.getElementById('tb-'+idx).style.width = v + '%';
+      }, 200 + idx * 80);
+    });
+
+    // ── Tips ──────────────────────────────────────────────────────────────
+    const tipsList = document.getElementById('tips-list');
+    tipsList.innerHTML = '';
+    c.tips.forEach((tip, i) => {
+      const item = document.createElement('div');
+      item.className = 'tip-item';
+      item.innerHTML = `<div class="tip-num">${i+1}</div><p>${tip}</p>`;
+      tipsList.appendChild(item);
+    });
+
+    // ── Filler words ──────────────────────────────────────────────────────
+    const fillerSec = document.getElementById('filler-section');
+    if (c.top_fillers && c.top_fillers.length > 0) {
+      const badges = c.top_fillers.map(f =>
+        `<div class="filler-badge">"${f.word}"<span class="filler-count">×${f.count}</span></div>`
+      ).join('');
+      fillerSec.innerHTML = `
+        <p style="font-size:0.82rem;color:var(--muted);margin-bottom:12px">
+          ${c.filler_count} filler word${c.filler_count !== 1 ? 's' : ''} detected
+          (${c.filler_rate_pct}% of words) — highlighted in transcript below.
+        </p>
+        <div class="filler-badges">${badges}</div>`;
+    } else {
+      fillerSec.innerHTML = '<p class="no-fillers">✅ No significant filler words detected — great!</p>';
+    }
+
+    // ── Grammar ───────────────────────────────────────────────────────────
+    const grammarSec = document.getElementById('grammar-section');
+    if (c.grammar_issues && c.grammar_issues.length > 0) {
+      const items = c.grammar_issues.map(g =>
+        `<div class="grammar-item">⚠️ ${g}</div>`
+      ).join('');
+      grammarSec.innerHTML = `<div class="grammar-list">${items}</div>`;
+    } else {
+      grammarSec.innerHTML = '<div class="grammar-good">✅ No grammar or formality issues detected.</div>';
+    }
+
+    // ── Pace meter ────────────────────────────────────────────────────────
+    const paceSec = document.getElementById('pace-section');
+    const wpm = c.wpm;
+    // Map WPM 60–250 → 0–100 % on the track
+    const pacePos = Math.min(100, Math.max(0, ((wpm - 60) / (250 - 60)) * 100));
+    const speakSec = d.speaking_seconds || d.duration_seconds;
+    const totalSec = d.duration_seconds;
+    const silencePct = totalSec > 0 ? Math.round((1 - speakSec / totalSec) * 100) : 0;
+
+    paceSec.innerHTML = `
+      <p style="font-size:1.4rem;font-family:'Syne',sans-serif;font-weight:700;margin-bottom:4px">
+        ${wpm} <small style="font-size:0.8rem;color:var(--muted)">words / min (active speech)</small>
+      </p>
+      <div class="pace-track">
+        <div class="pace-thumb" id="pace-thumb" style="left:${pacePos}%"></div>
+      </div>
+      <div class="pace-labels">
+        <span>Too slow (&lt;80)</span>
+        <span style="color:var(--green)">Ideal (130–160)</span>
+        <span>Too fast (&gt;200)</span>
+      </div>
+      <div class="pace-note">
+        ℹ️ <span>Pace is measured over your <strong>active speaking time</strong> (${speakSec}s), not the full recording (${totalSec}s).
+        ${silencePct > 10 ? `~${silencePct}% of the recording was silence or the interviewer speaking — this is excluded so your score isn't penalised unfairly.` : ''}
+        </span>
+      </div>
+      <p style="margin-top:10px;font-size:0.875rem;color:var(--muted)">${c.pace_feedback}</p>`;
+
+    // ── Transcript ────────────────────────────────────────────────────────
+    document.getElementById('transcript-box').innerHTML =
+      c.highlighted_transcript || '<em style="color:var(--muted)">No transcript available.</em>';
+  }
+
+  // ── timeline chart ────────────────────────────────────────────────────────
+  function drawTimeline(timeline) {
+    const canvas  = document.getElementById('timeline-canvas');
+    const ctx     = canvas.getContext('2d');
+    const legend  = document.getElementById('timeline-legend');
+
+    const N       = timeline.length;
+    const BAR_W   = Math.max(44, Math.min(80, Math.floor((window.innerWidth - 96) / N)));
+    const BAR_GAP = 8;
+    const PAD_L   = 52, PAD_R = 16, PAD_T = 20, PAD_B = 52;
+    const H_PLOT  = 200;
+    const W = PAD_L + N * (BAR_W + BAR_GAP) - BAR_GAP + PAD_R;
+    const H = PAD_T + H_PLOT + PAD_B;
+
+    canvas.width = W; canvas.height = H;
+    ctx.clearRect(0, 0, W, H);
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.lineWidth = 1;
+    [0, 25, 50, 75, 100].forEach(pct => {
+      const y = PAD_T + H_PLOT - (pct / 100) * H_PLOT;
+      ctx.beginPath(); ctx.moveTo(PAD_L, y); ctx.lineTo(W - PAD_R, y); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.25)';
+      ctx.font = '10px DM Sans, sans-serif'; ctx.textAlign = 'right';
+      ctx.fillText(pct + '%', PAD_L - 6, y + 4);
+    });
+
+    timeline.forEach((seg, i) => {
+      const x  = PAD_L + i * (BAR_W + BAR_GAP);
+      let yTop = PAD_T + H_PLOT;
+      const probs = Object.entries(seg.all_probs).sort((a,b) => a[1] - b[1]);
+      probs.forEach(([emotion, pct]) => {
+        if (pct < 0.5) return;
+        const barH = (pct / 100) * H_PLOT;
+        yTop -= barH;
+        ctx.fillStyle = COLORS[emotion] || '#7c6af7';
+        ctx.beginPath();
+        ctx.roundRect(x, yTop, BAR_W, barH,
+          pct === probs[probs.length-1][1] ? [4,4,0,0] : 0);
+        ctx.fill();
+      });
+      ctx.font = Math.min(18, BAR_W - 6) + 'px serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(EMOJIS[seg.emotion] || '•', x + BAR_W/2, PAD_T + H_PLOT - 4);
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      ctx.font = '10px DM Sans, sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(seg.label, x + BAR_W/2, PAD_T + H_PLOT + 18);
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.font = 'bold 10px DM Sans, sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(seg.confidence + '%', x + BAR_W/2, PAD_T + H_PLOT - 22);
+    });
+
+    legend.innerHTML = '';
+    EMOTIONS.forEach(e => {
+      const item = document.createElement('div');
+      item.className = 'legend-item';
+      item.innerHTML = `<div class="legend-dot" style="background:${COLORS[e]}"></div>${e}`;
+      legend.appendChild(item);
+    });
+  }
+
+  // ── reset ─────────────────────────────────────────────────────────────────
+  function resetAll() {
+    audioBlob = null;
+    document.getElementById('results').style.display     = 'none';
+    document.getElementById('input-card').style.display  = 'block';
+    document.getElementById('analyse-btn').disabled      = true;
+    document.getElementById('file-name').textContent     = '';
+    document.getElementById('playback').style.display    = 'none';
+    document.getElementById('rec-timer').textContent     = '';
+    document.getElementById('rec-status').textContent    = 'Click to start recording';
+    fileInput.value = '';
+    document.getElementById('res-score-fill').style.width = '0%';
+    document.getElementById('prob-grid').innerHTML       = '';
+    document.getElementById('timeline-card').style.display = 'none';
+  }
+
+  function showInputWithError(msg) {
+    document.getElementById('loader').style.display     = 'none';
+    document.getElementById('input-card').style.display = 'block';
+    showError(msg);
+  }
+  function showError(msg) {
+    const b = document.getElementById('error-box');
+    b.textContent = '⚠️ ' + msg; b.style.display = 'block';
+  }
+  function hideError() {
+    document.getElementById('error-box').style.display = 'none';
+  }
+</script>
+</body>
+</html>
