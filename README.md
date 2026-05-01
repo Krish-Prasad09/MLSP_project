@@ -7,6 +7,7 @@
 py -3.10 -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
+python.py
 ```
 
 ### Mac/Linux
@@ -14,6 +15,7 @@ pip install -r requirements.txt
 python3.10 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+python.py
 ```
 
 > First run will auto-download Whisper (~500MB) and Wav2Vec2 base model.
