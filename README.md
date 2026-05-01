@@ -1,4 +1,4 @@
-# EmoSense — AI Interview Emotion Evaluator
+# EmoSense — AI Interview Analyser
 
 An AI-powered mock interview coach that analyses your speech in real time —
 detecting emotional tone, communication quality, filler words, grammar, pace,
