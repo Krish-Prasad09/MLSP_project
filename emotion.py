@@ -24,7 +24,7 @@ model.eval()
 id2label     = model.config.id2label
 label2id     = model.config.label2id
 EMOTION_LIST = [id2label[i] for i in range(len(id2label))]
-print(f"✅ Model loaded. Emotions: {EMOTION_LIST}")
+print(f" MODEL LOADED SUCCESSFULLY. Emotions: {EMOTION_LIST}")
 
 
 # ── Interview feedback map ─────────────────────────────────────────────────

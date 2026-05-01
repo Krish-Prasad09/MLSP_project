@@ -26,26 +26,6 @@ import tempfile
 import subprocess
 import numpy as np
 
-# ── Lazy-load Whisper so app starts fast ──────────────────────────────────
-# _whisper_pipe = None
-
-# def _get_whisper():
-#     global _whisper_pipe
-#     if _whisper_pipe is None:
-#         from transformers import pipeline
-#         print("Loading Whisper STT model (first run — downloading ~150 MB)…")
-#         _whisper_pipe = pipeline(
-#             "automatic-speech-recognition",
-#             model="openai/whisper-small",          # ~150 MB, good accuracy/speed
-#             generate_kwargs={"language": "english"},
-#             return_timestamps=True,
-#         )
-#         print("✅ Whisper loaded.")
-#     return _whisper_pipe
-
-
-# ── Audio helpers ──────────────────────────────────────────────────────────
-
 # ── Load Whisper at startup (same as emotion model) ───────────────────────
 from transformers import pipeline
 print("Loading Whisper STT model...")
@@ -55,7 +35,7 @@ _whisper_pipe = pipeline(
     generate_kwargs={"language": "english"},
     return_timestamps=True,
 )
-print("✅ Whisper loaded.")
+print(" WHISPER loaded.")
 
 def _get_whisper():
     return _whisper_pipe
