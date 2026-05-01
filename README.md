@@ -141,7 +141,7 @@ python app.py
 
 ## Running the App
 
-Open **http://127.0.0.1:5000** in Chrome.
+You will be able to see **http://127.0.0.1:5000** in terminal, put that link on chrome to see.
 
 > ⚠️ Keep the terminal window open while using the app — closing it stops the server.
 
