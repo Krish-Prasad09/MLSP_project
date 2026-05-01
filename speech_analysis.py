@@ -1,6 +1,4 @@
 """
-speech_analysis.py
-──────────────────
 Speech-to-text (Whisper) + Communication Quality Analysis for EmoSense.
 
 Scores reported:
@@ -27,6 +25,11 @@ import subprocess
 import numpy as np
 
 # ── Load Whisper at startup (same as emotion model) ───────────────────────
+
+# loading it once at startup so we don't reload the model on every request
+# whisper-small is good enough for interview audio and not too heavy
+# return_timestamps=True is important — we need chunk timings later for WPM
+
 from transformers import pipeline
 print("Loading Whisper STT model...")
 _whisper_pipe = pipeline(
@@ -40,14 +43,17 @@ print(" WHISPER loaded.")
 def _get_whisper():
     return _whisper_pipe
 
+
 def _detect_suffix(audio_bytes: bytes) -> str:
+    # audio formats have fixed "magic bytes" at the start, checking those
+    # to figure out the file type without relying on a filename/extension
     if audio_bytes[:4] == b"RIFF":               return ".wav"
     if audio_bytes[:3] == b"ID3":                return ".mp3"
     if audio_bytes[:4] == b"fLaC":               return ".flac"
     if audio_bytes[:4] == b"OggS":               return ".ogg"
-    if audio_bytes[4:8] == b"ftyp":              return ".m4a"
+    if audio_bytes[4:8] == b"ftyp":              return ".m4a"   # ftyp is at offset 4 for mp4/m4a
     if audio_bytes[:4] == b"\x1a\x45\xdf\xa3":  return ".webm"
-    return ".webm"
+    return ".webm"   # browser recordings are almost always webm so safe default
 
 
 def _to_wav_numpy(audio_bytes: bytes) -> tuple[np.ndarray, int]:
@@ -57,11 +63,12 @@ def _to_wav_numpy(audio_bytes: bytes) -> tuple[np.ndarray, int]:
     """
     import torchaudio, torch
 
-    # Try torchaudio first
+    # try torchaudio first since it's faster than spawning ffmpeg
     try:
         wf, sr = torchaudio.load(io.BytesIO(audio_bytes))
     except Exception:
-        # Fall back to ffmpeg conversion
+        # torchaudio can't handle this codec, fall back to ffmpeg
+        # write to a temp file, convert, then read back
         suffix  = _detect_suffix(audio_bytes)
         tmp_in  = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
         tmp_out = tempfile.NamedTemporaryFile(suffix=".wav",  delete=False)
@@ -77,12 +84,16 @@ def _to_wav_numpy(audio_bytes: bytes) -> tuple[np.ndarray, int]:
                 raise RuntimeError(f"ffmpeg: {result.stderr.decode()}")
             wf, sr = torchaudio.load(tmp_out.name)
         finally:
+            # cleanup temp files whether or not something went wrong
             for p in (tmp_in.name, tmp_out.name):
                 if os.path.exists(p): os.remove(p)
 
+    # whisper only works at 16kHz
     if sr != 16000:
         wf = torchaudio.functional.resample(wf, sr, 16000)
         sr = 16000
+
+    # whisper expects mono, so average left+right if stereo
     if wf.shape[0] > 1:
         wf = wf.mean(dim=0, keepdim=True)
 
@@ -108,6 +119,8 @@ def transcribe(audio_bytes: bytes) -> dict:
     duration_sec = len(audio_np) / sr
 
     pipe = _get_whisper()
+
+    # 30s chunks with 5s overlap so words at chunk boundaries don't get dropped
     result = pipe(
         {"array": audio_np, "sampling_rate": sr},
         chunk_length_s=30,
@@ -118,9 +131,9 @@ def transcribe(audio_bytes: bytes) -> dict:
     chunks = result.get("chunks", [])
 
     # ── Measure actual speaking time from per-chunk timestamps ────────────
-    # Whisper returns chunks like: {"timestamp": [0.0, 2.4], "text": "..."}
-    # Summing those durations gives us the time the candidate was actually
-    # speaking — not including pauses, silence, or the interviewer's turns.
+    # each chunk has a timestamp like [start, end] in seconds
+    # adding those up gives only the time the person was actually talking,
+    # not the full recording length (which might include interviewer speaking, silence, etc.)
     speaking_seconds = 0.0
     for chunk in chunks:
         ts = chunk.get("timestamp")
@@ -129,7 +142,7 @@ def transcribe(audio_bytes: bytes) -> dict:
             if chunk_dur > 0:
                 speaking_seconds += chunk_dur
 
-    # Fallback: if no timestamps came back, use total duration
+    # if whisper didn't return timestamps for some reason, just use total duration
     if speaking_seconds < 1.0:
         speaking_seconds = duration_sec
 
@@ -143,7 +156,7 @@ def transcribe(audio_bytes: bytes) -> dict:
 
 # ── Communication analysis ─────────────────────────────────────────────────
 
-# Filler words — expanded list
+# covers both short fillers (um, uh) and longer phrases (you know what i mean)
 FILLERS = {
     "um", "uh", "er", "ah", "hmm", "umm", "uhh", "err",
     "like", "basically", "literally", "honestly", "actually",
@@ -154,22 +167,24 @@ FILLERS = {
     "well", "anyway", "whatever",
 }
 
-# Multi-word fillers (checked before single-word)
+# multi-word ones need to be checked first (longest first) so we don't accidentally
+# match "you" before we get a chance to match "you know"
 MULTI_FILLERS = sorted(
     [f for f in FILLERS if " " in f],
-    key=lambda x: -len(x)   # longest first
+    key=lambda x: -len(x)
 )
 
 SINGLE_FILLERS = {f for f in FILLERS if " " not in f}
 
-# Weak/vague words
+# vague words that weaken the answer without adding meaning
 WEAK_WORDS = {
     "thing", "stuff", "things", "lot", "lots", "very", "really",
     "quite", "pretty", "just", "maybe", "perhaps", "probably",
     "might", "could", "somewhat", "a bit",
 }
 
-# Grammar patterns (regex → description)
+# regex pattern → feedback message
+# these catch the most common spoken grammar mistakes
 GRAMMAR_ISSUES = [
     (r"\bi done\b",            "Incorrect: 'I done' → use 'I did' or 'I have done'"),
     (r"\bthey was\b",          "Subject-verb disagreement: 'they was' → 'they were'"),
@@ -193,6 +208,7 @@ GRAMMAR_ISSUES = [
     (r"\bnope\b",              "Informal: 'nope' → 'no'"),
 ]
 
+# matches constructions like "was done", "is being reviewed", "were told"
 PASSIVE_PATTERN = re.compile(
     r"\b(was|were|is|are|been|be|being)\s+(being\s+)?\w+ed\b", re.IGNORECASE
 )
@@ -202,14 +218,15 @@ def _find_fillers(text_lower: str) -> list[str]:
     found = []
     temp  = text_lower
 
-    # Multi-word first
+    # scan multi-word fillers first, then blank out that region with spaces
+    # so the single-word pass doesn't double count words already in a phrase
     for mf in MULTI_FILLERS:
         count = temp.count(mf)
         for _ in range(count):
             found.append(mf)
         temp = temp.replace(mf, " " * len(mf))
 
-    # Single-word
+    # now pick up single-word fillers from whatever's left
     words = re.findall(r"\b\w+\b", temp)
     for w in words:
         if w in SINGLE_FILLERS:
@@ -219,6 +236,7 @@ def _find_fillers(text_lower: str) -> list[str]:
 
 
 def _sentences(text: str) -> list[str]:
+    # split on . ! ? — not perfect but works fine for speech transcripts
     parts = re.split(r"(?<=[.!?])\s+", text.strip())
     return [p.strip() for p in parts if p.strip()]
 
@@ -243,7 +261,7 @@ def analyse_communication(transcript_text: str, speaking_seconds: float) -> dict
     sentences  = _sentences(text)
 
     word_count     = len(words)
-    sentence_count = max(len(sentences), 1)
+    sentence_count = max(len(sentences), 1)  # avoid div by zero
 
     if word_count < 5:
         return {"error": "Too few words to analyse (< 5)."}
@@ -251,9 +269,9 @@ def analyse_communication(transcript_text: str, speaking_seconds: float) -> dict
     # ── 1. Filler words ───────────────────────────────────────────────────
     filler_instances = _find_fillers(text_lower)
     filler_count     = len(filler_instances)
-    filler_rate      = filler_count / word_count  # fraction of words
+    filler_rate      = filler_count / word_count
 
-    # Score: 0 fillers = 100, 20 %+ = 0
+    # 0 fillers = 100, hits 0 once fillers are 20% of words
     filler_score = max(0, round(100 - (filler_rate / 0.20) * 100))
     filler_freq  = {}
     for f in filler_instances:
@@ -266,31 +284,29 @@ def analyse_communication(transcript_text: str, speaking_seconds: float) -> dict
         if re.search(pattern, text_lower):
             grammar_issues.append(msg)
 
-    # Score: 0 issues = 100, each issue deducts 10 pts, min 0
+    # -10 per issue, so 10 issues = 0
     grammar_score = max(0, 100 - len(grammar_issues) * 10)
 
     # ── 3. Sentence clarity ───────────────────────────────────────────────
     avg_words_per_sent = word_count / sentence_count
     sentence_lengths   = [len(re.findall(r"\b\w+\b", s)) for s in sentences]
 
-    # Long sentences (> 35 words) are hard to follow in speech
+    # anything over 35 words is hard to follow when spoken out loud
     long_sent_count = sum(1 for l in sentence_lengths if l > 35)
     long_sent_ratio = long_sent_count / sentence_count
 
-    # Passive voice ratio
     passive_matches = PASSIVE_PATTERN.findall(text)
     passive_ratio   = len(passive_matches) / sentence_count
 
-    # Weak/vague word ratio
     weak_count = sum(1 for w in words if w in WEAK_WORDS)
     weak_ratio = weak_count / word_count
 
-    # Clarity score — penalise long sentences, passive voice, weak words
+    # start from 100 and deduct for each problem
     clarity_score = 100
     clarity_score -= long_sent_ratio  * 30
     clarity_score -= passive_ratio    * 20
     clarity_score -= weak_ratio       * 30
-    # Ideal avg sentence length 12–20 words
+    # ideal spoken sentence is around 12-20 words
     if avg_words_per_sent > 25:
         clarity_score -= (avg_words_per_sent - 25) * 1.5
     elif avg_words_per_sent < 6:
@@ -299,31 +315,30 @@ def analyse_communication(transcript_text: str, speaking_seconds: float) -> dict
 
     # ── 4. Vocabulary diversity (type-token ratio) ────────────────────────
     unique_words  = set(words)
-    ttr           = len(unique_words) / word_count   # 0–1
+    ttr           = len(unique_words) / word_count
 
-    # Corrected TTR (normalise over 50-word window to be fair for long texts)
+    # raw TTR is biased — longer answers repeat words more by nature
+    # so we look at only the first 50 words to keep it fair across lengths
     window = 50
     if word_count >= window:
         cttr = len(set(words[:window])) / window
     else:
         cttr = ttr
 
-    vocab_score = min(100, round(cttr * 150))   # 67 % unique → 100
+    vocab_score = min(100, round(cttr * 150))  # ~67% unique in 50 words → score of 100
 
     # ── 5. Pace — based on active speaking time only ──────────────────────
-    # We use speaking_seconds (sum of Whisper chunk timestamps) rather than
-    # total recording duration. This is interview-accurate: a candidate who
-    # answers a 2-minute question in a 10-minute session should be judged on
-    # how fast they spoke during those 2 minutes, not the whole session.
+    # using speaking_seconds here, not total clip duration, so the interviewer
+    # talking for 3 minutes doesn't make the candidate look slow
     wpm = (word_count / speaking_seconds) * 60 if speaking_seconds > 0 else 0
 
-    # Ideal interview pace: 130–160 wpm
-    IDEAL_LOW, IDEAL_HIGH = 130, 160
+    IDEAL_LOW, IDEAL_HIGH = 130, 160  # good interview pace range
     if IDEAL_LOW <= wpm <= IDEAL_HIGH:
         pace_score = 100
     elif wpm < IDEAL_LOW:
         pace_score = max(0, round(100 - (IDEAL_LOW - wpm) * 1.2))
     else:
+        # steeper penalty for going too fast vs too slow
         pace_score = max(0, round(100 - (wpm - IDEAL_HIGH) * 1.5))
 
     if wpm < 80:
@@ -338,6 +353,8 @@ def analyse_communication(transcript_text: str, speaking_seconds: float) -> dict
         pace_feedback = "Too fast — significantly slow down your delivery."
 
     # ── 6. Composite score ────────────────────────────────────────────────
+    # filler + grammar + clarity each get 0.25 since those are most noticeable
+    # pace only gets 0.10 since being slightly off pace isn't a dealbreaker
     overall_score = round(
         filler_score  * 0.25 +
         grammar_score * 0.25 +
@@ -366,7 +383,8 @@ def analyse_communication(transcript_text: str, speaking_seconds: float) -> dict
     if not tips:
         tips.append("Excellent communication! Keep up the confident, clear delivery.")
 
-    # ── annotate transcript with filler highlights ─────────────────────────
+    # wrap filler words in <mark> tags so the frontend can highlight them
+    # sorting longest first to avoid partial replacements inside longer phrases
     highlighted = text
     all_filler_words = sorted(set(filler_instances), key=lambda x: -len(x))
     for f in all_filler_words:
@@ -374,7 +392,6 @@ def analyse_communication(transcript_text: str, speaking_seconds: float) -> dict
         highlighted = pattern.sub(f'<mark class="filler">{f}</mark>', highlighted)
 
     return {
-        # Scores
         "overall_score":   overall_score,
         "filler_score":    filler_score,
         "grammar_score":   grammar_score,
@@ -382,7 +399,6 @@ def analyse_communication(transcript_text: str, speaking_seconds: float) -> dict
         "vocab_score":     vocab_score,
         "pace_score":      pace_score,
 
-        # Details
         "word_count":          word_count,
         "sentence_count":      sentence_count,
         "avg_words_per_sent":  round(avg_words_per_sent, 1),
@@ -396,7 +412,6 @@ def analyse_communication(transcript_text: str, speaking_seconds: float) -> dict
         "pace_feedback":       pace_feedback,
         "tips":                tips,
 
-        # Highlighted transcript
         "highlighted_transcript": highlighted,
     }
 
@@ -408,12 +423,12 @@ def analyse_speech(audio_bytes: bytes) -> dict:
     Transcribe audio and run full communication analysis.
     Returns combined dict safe to jsonify().
     """
-    stt            = transcribe(audio_bytes)
-    text           = stt["text"]
-    duration_sec   = stt["duration_seconds"]
-    speaking_sec   = stt["speaking_seconds"]
+    stt          = transcribe(audio_bytes)
+    text         = stt["text"]
+    duration_sec = stt["duration_seconds"]
+    speaking_sec = stt["speaking_seconds"]
 
-    # Pass active speaking time so WPM is calculated correctly
+    # pass speaking_sec (not duration) so WPM isn't skewed by silence/interviewer
     comm = analyse_communication(text, speaking_sec)
 
     return {

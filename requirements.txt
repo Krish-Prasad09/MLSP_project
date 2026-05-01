@@ -1,8 +1,25 @@
+# EmoSense - Speech Emotion Recognition Interview Evaluator
+# Python 3.10 required (3.11+ may have torch compatibility issues)
+#
+# Install with:
+#   pip install -r requirements.txt
+ 
+# ── Web framework ──────────────────────────────────────────────────────────
 flask==3.0.3
-transformers==4.40.0
+werkzeug==3.0.3
+ 
+# ── Deep learning ──────────────────────────────────────────────────────────
 torch==2.2.2
 torchaudio==2.2.2
+ 
+# ── HuggingFace (Wav2Vec2 + Whisper) ──────────────────────────────────────
+transformers==4.40.0
+accelerate==0.29.3
+ 
+# ── Audio processing ───────────────────────────────────────────────────────
 librosa==0.10.2
-numpy==1.26.4
 soundfile==0.12.1
-werkzeug==3.0.3
+ 
+# ── Core numeric ───────────────────────────────────────────────────────────
+numpy==1.26.4
+ 
