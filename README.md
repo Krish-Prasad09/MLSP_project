@@ -75,13 +75,13 @@ MyDrive/ser_wav2vec2_bestnew/
 ### Step 2 — Download from Google Drive
 
 1. Go to [drive.google.com](https://drive.google.com)
-2. Find the `ser_wav2vec2_bestnew` folder
+2. Find the `ser_wav2vec2_best` folder
 3. Right-click → **Download** (downloads as a zip file)
 4. Unzip it
 
 ### Step 3 — Rename files correctly
 
-1. Rename the unzipped **folder** from `ser_wav2vec2_bestnew` → `ser_wav2vec2_best`
+1. If donwloaded file name is not `ser_wav2vec2_best`, then rename the unzipped **folder** from `whatever` → `ser_wav2vec2_best`
 2. Open the folder and rename `processor_config.json` → `preprocessor_config.json`
 
 > ⚠️ Both renames are required — the app will crash without them.
