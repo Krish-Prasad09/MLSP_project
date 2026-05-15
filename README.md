@@ -106,7 +106,6 @@ emosense/
 ├── emotion.py
 ├── speech_analysis.py
 ├── requirements.txt
-├── run.bat
 └── SER_CREMA_D_Wav2Vec2.ipynb
 ```
 
@@ -158,7 +157,6 @@ emosense/
 ├── emotion.py                  ← Wav2Vec2 inference + emotion timeline
 ├── speech_analysis.py          ← Whisper transcription + communication scoring
 ├── requirements.txt            ← all dependencies
-├── run.bat                     ← one-click launcher (Windows)
 ├── .gitignore
 └── SER_CREMA_D_Wav2Vec2.ipynb  ← Colab training notebook
 ```
@@ -173,7 +171,7 @@ emosense/
 | Base model | facebook/wav2vec2-base |
 | Dataset | CREMA-D (7,442 clips · 91 actors) |
 | Emotions | angry · disgust · fear · happy · neutral · sad |
-| Split | 70% train · 15% val · 15% test |
+| Split | 80% train · 10% val · 10% test |
 | Accuracy | ~76% on test set |
 | STT model | openai/whisper-small |
 
