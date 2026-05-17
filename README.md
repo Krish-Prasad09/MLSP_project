@@ -111,6 +111,10 @@ emosense/
 
 ---
 
+> ⚠️ Install torch separately first (before requirements.txt) — this ensures 
+> the correct version is pulled from PyTorch's own servers and not overridden 
+> by an older cached version.
+
 ## Setup
 
 ### Windows
@@ -118,6 +122,7 @@ emosense/
 ```powershell
 py -3.10 -m venv venv
 venv\Scripts\activate
+pip install torch==2.2.2 torchaudio==2.2.2 --index-url https://download.pytorch.org/whl/cpu
 pip install -r requirements.txt
 python app.py
 ```
@@ -127,6 +132,7 @@ python app.py
 ```bash
 python3.10 -m venv venv
 source venv/bin/activate
+pip install torch==2.2.2 torchaudio==2.2.2 --index-url https://download.pytorch.org/whl/cpu
 pip install -r requirements.txt
 python app.py
 ```
