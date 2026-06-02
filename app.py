@@ -97,3 +97,6 @@ def analyse_full():
 if __name__ == "__main__":
     print(" EmoSense by Group 17 starting at http://127.0.0.1:5000")
     app.run(debug=False, port=5000)
+    # app.run(debug=False, host="0.0.0.0", port=7860)
+
+    

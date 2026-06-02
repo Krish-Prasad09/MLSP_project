@@ -1,5 +1,5 @@
 """
-Speech-to-text (Whisper) + Communication Quality Analysis for EmoSense.
+Speech-to-text (Whisper) + Communication Quality Analysis:
 
 Scores reported:
   • Filler words     — "um", "uh", "like", "you know", "basically", etc.

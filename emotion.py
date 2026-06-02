@@ -9,6 +9,7 @@ from transformers import Wav2Vec2Processor, Wav2Vec2ForSequenceClassification
 
 # ── Load model once at startup ─────────────────────────────────────────────
 MODEL_PATH = "./ser_wav2vec2_best"
+# MODEL_PATH = "Krizzh/emosense-wav2vec2-crema-d"
 
 SAMPLE_RATE    = 16_000
 WINDOW_SECONDS = 4          # model was trained on 4-second windows — never change this
